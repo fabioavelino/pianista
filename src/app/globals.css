@@ -16,6 +16,12 @@
   }
 }
 
+html, body, main {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+}
+
 body {
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(
@@ -24,4 +30,12 @@ body {
       rgb(var(--background-end-rgb))
     )
     rgb(var(--background-start-rgb));
+}
+
+img#music-sheet {
+  object-fit: contain;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  width: unset;
+  height: auto;
 }

@@ -1,0 +1,80 @@
+#staff {
+    position: absolute;
+    padding: 40px;
+}
+
+#note > p {
+    font-weight: 500;
+    color: red;
+    -webkit-text-stroke: 0.2px blue;
+    /* background-color: rgba(255, 255, 255, 0.5); */
+    /* text-shadow: 1px 1px 2px black, 0 0 1em blue, 0 0 0.2em blue; */
+    text-shadow: 0px 0px 1px white, 0px 0px 2px white, 0px 0px 4px white, 0px 0px 6px white
+}
+
+#note:nth-child(even) > p {
+    padding-left: 16px;
+}
+
+#control {
+    position: absolute;
+    background-color: rgba(255, 255, 255, 0.8);
+}
+
+/* .button-control {
+    font-size: 50px;
+    line-height: 50px;
+} */
+
+.four-control {
+    display: grid;
+    row-gap: 0px;
+    column-gap: 0px;
+}
+
+.four-control > #up {
+    grid-column-start: 2;
+    grid-column-end: 3;
+    grid-row-start: 1;
+    grid-row-end: 2;
+}
+
+.four-control > #left {
+    grid-column-start: 1;
+    grid-column-end: 2;
+    grid-row-start: 2;
+    grid-row-end: 3;
+}
+
+.four-control > #right {
+    grid-column-start: 3;
+    grid-column-end: 4;
+    grid-row-start: 2;
+    grid-row-end: 3;
+}
+
+.four-control > #down {
+    grid-column-start: 2;
+    grid-column-end: 3;
+    grid-row-start: 3;
+    grid-row-end: 4;
+}
+
+.two-control {
+    display: grid;
+    row-gap: 0px;
+    column-gap: 0px;
+}
+
+.two-control > #up {
+    grid-column-start: 1;
+    grid-column-end: 2;
+    grid-row-start: 1;
+    grid-row-end: 2;
+}
+.two-control > #down {
+    grid-column-start: 1;
+    grid-column-end: 2;
+    grid-row-start: 2;
+    grid-row-end: 3;
+}
