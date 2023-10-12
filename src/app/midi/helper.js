@@ -115,47 +115,45 @@ const parseEventToMeasures = (midi) => {
 };
 
 const createNote = (event, accumulatorDelta, quarterNoteTimeDivision, midiNotes) => {
-  let note = {
+  const note = {
     startEvent: event,
     start: accumulatorDelta,
-    isFinish: false
-  }
-  let handleFinishNote = (finishEvent, finishAccumulatorDelta) => {
-    note.endEvent = finishEvent;
-    note.isFinish = true;
-    note.end = finishAccumulatorDelta;
-    note.durationTime = note.end - note.start;
-    note.note = [midiNotes[finishEvent.data[0]]];
-    const estimatedDuration = getDuration(
-      quarterNoteTimeDivision,
-      note.durationTime,
-      false
-    );
-    note.duration = estimatedDuration;
-  }
-  let getNotation = () => {
-    if (note.note.length === 1) {
-      return `${note.note[0]}/${note.duration.durationLetter}`
-    }
-    return `(${note.note.join(" ")})/${note.duration.durationLetter}`;
-  }
-  let getNoteAndDuration = () => {
-    let simplifedNote = {
-      note: [note.note],
-      duration: note.duration.durationLetter
-    };
-    let getNotation = () => { if (simplifedNote.note.length === 1) {
-      return `${simplifedNote.note[0]}/${note.duration}`
-    }
-    return `(${simplifedNote.note.join(" ")})/${note.duration}`;}
-    simplifedNote.getNotation = getNotation;
-    return simplifedNote;
-  }
-  note.handleFinishNote = handleFinishNote;
-  note.getNotation = getNotation;
-  note.getNoteAndDuration = getNoteAndDuration;
+    isFinish: false,
+    endEvent: null,
+    end: 0,
+    note: [],
+    durationTime: 0,
+    duration: '',
+    handleFinishNote(finishEvent, finishAccumulatorDelta) {
+      this.endEvent = finishEvent;
+      this.isFinish = true;
+      this.end = finishAccumulatorDelta;
+      this.durationTime = this.end - this.start;
+      this.note = [midiNotes[finishEvent.data[0]]];
+      this.duration = getDuration(quarterNoteTimeDivision, this.durationTime, false);
+    },
+    getNotation() {
+      if (this.note.length === 1) {
+        return `${this.note[0]}/${this.duration.durationLetter}`;
+      }
+      return `(${this.note.join(" ")})/${this.duration.durationLetter}`;
+    },
+    getNoteAndDuration() {
+      return {
+        note: [this.note],
+        duration: this.duration.durationLetter,
+        getNotation: () => {
+          if (this.note.length === 1) {
+            return `${this.note[0]}/${this.duration}`;
+          }
+          return `(${this.note.join(" ")})/${this.duration}`;
+        },
+      };
+    },
+  };
+
   return note;
-}
+};
 
 const parseStaffToMeasures = (
   rawStaff,
@@ -232,41 +230,30 @@ const parseStaffToMeasures = (
 
 const prepareMeasureNotes = (measure = [], options, score) => {
   const notes = measure[0];
-  let notesMerged = [];
-  for (let note of notes) {
-    let simplified = note.getNoteAndDuration();
-    if (notesMerged.length === 0) {
-      notesMerged.push(simplified);
+  const notesMerged = notes.reduce((acc, note) => {
+    const simplified = note.getNoteAndDuration();
+    const lastNote = acc[acc.length - 1];
+    if (lastNote && lastNote.duration === simplified.duration && lastNote.note.length < 4) {
+      lastNote.note.push(...simplified.note);
     } else {
-      let lastNote = notesMerged[notesMerged.length - 1];
-      if (lastNote.duration === simplified.duration && lastNote.note.length < 4) {
-        lastNote.note = [...lastNote.note, ...simplified.note];
-      } else {
-        notesMerged.push(simplified);
-      }
+      acc.push(simplified);
     }
-  }
-  notesMerged = notesMerged.map(noteMerged => {
-      const stringifedNotation = noteMerged.note.reduce((accu, subNote, index) => {
-        let noteStringified = subNote[0];
-        if (subNote.length > 1) {
-          noteStringified = `(${subNote.join(" ")})`;
-        }
-        if (index === 0) {
-          return `${noteStringified}/${noteMerged.duration}`;
-        }
-        return `${accu}, ${noteStringified}/${noteMerged.duration}`;
-      }, "");
-    console.log(stringifedNotation);
-    if (["8", "16"].includes(noteMerged.duration)) {
-      return score.beam(score.notes(stringifedNotation, options));
-    }
-    return score.notes(stringifedNotation, options);
-  }).reduce((accu, scoreNotes, index) => {
-    // .concat is method from score.notes element
-    return accu.concat(scoreNotes);
-  });
-  return notesMerged;
-}
+    return acc;
+  }, []);
+
+  return notesMerged.map(noteMerged => {
+    const stringifedNotation = noteMerged.note.map(subNote => {
+      const noteStringified = subNote.length > 1 ? `(${subNote.join(" ")})` : subNote[0];
+      return `${noteStringified}/${noteMerged.duration}`;
+    }).join(", ");
+    
+    const finalNotes = ["8", "16"].includes(noteMerged.duration)
+      ? score.beam(score.notes(stringifedNotation, options))
+      : score.notes(stringifedNotation, options);
+    
+    return finalNotes;
+  }).reduce((accu, scoreNotes) => accu.concat(scoreNotes), []);
+};
+
 
 export { parseMidi, parseEventToMeasures, getKeySignature, prepareMeasureNotes };
