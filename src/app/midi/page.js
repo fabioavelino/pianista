@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { parseMidi, parseEventToMeasures, getKeySignature } from "./helper";
+import { parseMidi, parseEventToMeasures, getKeySignature, prepareMeasureNotes } from "./helper";
 import { Vex } from "vexflow";
 
 const { Factory, EasyScore, System, Renderer, Stave, StaveNote, Note } = Vex.Flow;
@@ -40,9 +40,7 @@ export default function Page() {
     const { trebleStaff, bassStaff } = parseEventToMeasures(midi);
     const score = vf.EasyScore();
     //const system = vf.System();
-    console.log(trebleStaff);
-    const prepareNotes = (notes, options) => {
-      console.log("Preparing notes for: ", notes)
+    /* const prepareNotes = (notes, options) => {
       let newNotes = [];
       for (let i = 0; i < notes.length; i++) {
         if (i === 0) { newNotes.push([notes[i]]); } else {
@@ -83,13 +81,7 @@ export default function Page() {
         }
         return accu.concat(next);
       });
-      /* return notes.map((subnotes) => {
-        if (subnotes.notes.length === 1) {
-            return `${subnotes.notes[0]}/${subnotes.duration}`
-        }
-        return `(${subnotes.notes.join(" ")})/${subnotes.duration}`
-    }).join(", "); */
-  };
+  }; */
 
     
     // https://github.com/0xfe/vexflow/blob/master/tests/bach_tests.ts
@@ -113,7 +105,7 @@ export default function Page() {
     system
     .addStave({
         voices: [
-        score.voice(prepareNotes(trebleStaff[0], { stem: 'down' })),
+        score.voice(prepareMeasureNotes(trebleStaff[0], { stem: 'down', clef: "treble" }, score)),
         //score.voice(score.notes(notes[0] + "/q", ...notes.slice(1))),
         //score.voice(score.notes('C#4/h, C#4', { stem: 'down' })),
         ]
@@ -122,10 +114,10 @@ export default function Page() {
     .addTimeSignature('4/4')
     .addKeySignature(keySignature);
 
-    system
+    /* system
     .addStave({
         voices: [
-        score.voice(prepareNotes(bassStaff[0], { clef: "bass"})),
+        score.voice(prepareMeasureNotes(bassStaff[0], { clef: "bass"}, score)),
         //score.voice(score.notes(notes[0] + "/q", ...notes.slice(1))),
         //score.voice(score.notes('C#4/h, C#4', { stem: 'down' })),
         ]
@@ -134,7 +126,7 @@ export default function Page() {
     .addTimeSignature('4/4')
     .addKeySignature(keySignature);
 
-    system.addConnector()
+    system.addConnector() */
 
     vf.draw();
     let nextWidth = document.querySelectorAll("g.vf-stave")[0].getBoundingClientRect().width;
@@ -146,7 +138,7 @@ export default function Page() {
         system
         .addStave({
             voices: [
-            score.voice(prepareNotes(trebleStaff[i], { stem: 'down' })),
+            score.voice(prepareMeasureNotes(trebleStaff[i], { stem: 'down', clef: "treble" }, score)),
             //score.voice(score.notes(notes[0] + "/q", ...notes.slice(1))),
             //score.voice(score.notes('C#4/h, C#4', { stem: 'down' })),
             ],
