@@ -68,6 +68,10 @@ const getDuration = (quarterNoteTimeDivision, delta, withRest = false) => {
       value: quarterNoteTimeDivision / 4,
       durationLetter: withRest ? "16/r" : "16",
     },
+    {
+      value: 0,
+      durationLetter: null,
+    },
   ];
   const result = durations.reduce((prev, curr) =>
     Math.abs(curr.value - delta) < Math.abs(prev.value - delta) ? curr : prev
@@ -114,23 +118,20 @@ const parseEventToMeasures = (midi) => {
   return { trebleStaff, bassStaff };
 };
 
-const createNote = (event, accumulatorDelta, quarterNoteTimeDivision, midiNotes) => {
+const createNote = (startTime, quarterNoteTimeDivision, realNote, isRest = false) => {
   const note = {
-    startEvent: event,
-    start: accumulatorDelta,
+    start: startTime,
     isFinish: false,
-    endEvent: null,
     end: 0,
-    note: [],
+    note: [realNote],
+    quarterNoteTimeDivision: quarterNoteTimeDivision,
     durationTime: 0,
     duration: '',
-    handleFinishNote(finishEvent, finishAccumulatorDelta) {
-      this.endEvent = finishEvent;
+    handleFinishNote(endTime) {
       this.isFinish = true;
-      this.end = finishAccumulatorDelta;
+      this.end = endTime;
       this.durationTime = this.end - this.start;
-      this.note = [midiNotes[finishEvent.data[0]]];
-      this.duration = getDuration(quarterNoteTimeDivision, this.durationTime, false);
+      this.duration = getDuration(quarterNoteTimeDivision, this.durationTime, isRest);
     },
     getNotation() {
       if (this.note.length === 1) {
@@ -175,15 +176,29 @@ const parseStaffToMeasures = (
     }
     if (event.type === MidiHelper.EventType.NOTE) {
       if (event.data[1] !== MidiHelper.EventVelocity.OFF) {
-        notes.push(createNote(event, accumulatorDelta, quarterNoteTimeDivision, midiNotes));
+        notes.push(createNote(accumulatorDelta, quarterNoteTimeDivision, midiNotes[event.data[0]]));
       } else {
         const noteEquivalent = notes.findIndex(note => 
-          note.startEvent.data[0] === event.data[0] && note.isFinish === false
+          note.note[0] === midiNotes[event.data[0]] && note.isFinish === false
         );
-        notes[noteEquivalent].handleFinishNote(event, accumulatorDelta);
+        notes[noteEquivalent].handleFinishNote(accumulatorDelta);
       }
     }
   }
+  
+  // loop over notes to create rest
+  for (let i = notes.length - 1; i > 0; i--) {
+    const noteB = notes[i];
+    const noteA = notes[i-1];
+    const diff = noteB.start - noteA.end;
+    let duration = getDuration(noteA.quarterNoteTimeDivision, diff, true);
+    if (duration.value > 0) {
+      let restNote = createNote(noteB.start - duration.value, quarterNoteTimeDivision, "F3", true);
+      restNote.handleFinishNote(noteB.start);
+      notes.splice(i, 0, restNote);
+    }
+  }
+
   // create measures
   let startMeasureTime = 0;
   let endMeasureTime = startMeasureTime + measureTime;
@@ -229,7 +244,8 @@ const parseStaffToMeasures = (
 };
 
 const prepareMeasureNotes = (measure = [], options, score) => {
-  const notes = measure[0];
+  let notes = measure[0];
+
   const notesMerged = notes.reduce((acc, note) => {
     const simplified = note.getNoteAndDuration();
     const lastNote = acc[acc.length - 1];
@@ -240,14 +256,14 @@ const prepareMeasureNotes = (measure = [], options, score) => {
     }
     return acc;
   }, []);
-
+  console.log(notesMerged);
   return notesMerged.map(noteMerged => {
     const stringifedNotation = noteMerged.note.map(subNote => {
       const noteStringified = subNote.length > 1 ? `(${subNote.join(" ")})` : subNote[0];
       return `${noteStringified}/${noteMerged.duration}`;
     }).join(", ");
     
-    const finalNotes = ["8", "16"].includes(noteMerged.duration)
+    const finalNotes = ["8", "16"].includes(noteMerged.duration) && noteMerged.note.length > 1
       ? score.beam(score.notes(stringifedNotation, options))
       : score.notes(stringifedNotation, options);
     

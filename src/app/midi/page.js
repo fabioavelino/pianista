@@ -114,7 +114,7 @@ export default function Page() {
     .addTimeSignature('4/4')
     .addKeySignature(keySignature);
 
-    /* system
+    system
     .addStave({
         voices: [
         score.voice(prepareMeasureNotes(bassStaff[0], { clef: "bass"}, score)),
@@ -126,7 +126,7 @@ export default function Page() {
     .addTimeSignature('4/4')
     .addKeySignature(keySignature);
 
-    system.addConnector() */
+    system.addConnector()
 
     vf.draw();
     let nextWidth = document.querySelectorAll("g.vf-stave")[0].getBoundingClientRect().width;
@@ -143,14 +143,14 @@ export default function Page() {
             //score.voice(score.notes('C#4/h, C#4', { stem: 'down' })),
             ],
         });
-        /* system
+        system
         .addStave({
             voices: [
-            score.voice(prepareNotes(bassStaff[i], { clef: "bass"})),
+            score.voice(prepareMeasureNotes(bassStaff[i], { clef: "bass"}, score)),
             //score.voice(score.notes(notes[0] + "/q", ...notes.slice(1))),
             //score.voice(score.notes('C#4/h, C#4', { stem: 'down' })),
             ],
-        }); */
+        });
         vf.draw();
         const drawedStaves = document.querySelectorAll("g.vf-stave");
         const lastStave = drawedStaves[drawedStaves.length - 1]
