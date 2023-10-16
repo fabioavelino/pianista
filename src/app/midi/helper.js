@@ -118,11 +118,12 @@ const parseEventToMeasures = (midi) => {
   return { trebleStaff, bassStaff };
 };
 
-const createNote = (startTime, quarterNoteTimeDivision, realNote, isRest = false) => {
+const createNote = (startTime, quarterNoteTimeDivision, midiNote, realNote, isRest = false) => {
   const note = {
     start: startTime,
     isFinish: false,
     end: 0,
+    midiNote: [midiNote],
     note: [realNote],
     quarterNoteTimeDivision: quarterNoteTimeDivision,
     durationTime: 0,
@@ -142,6 +143,7 @@ const createNote = (startTime, quarterNoteTimeDivision, realNote, isRest = false
     getNoteAndDuration() {
       return {
         note: [this.note],
+        midiNote: [this.midiNote],
         duration: this.duration.durationLetter,
         getNotation: () => {
           if (this.note.length === 1) {
@@ -176,7 +178,7 @@ const parseStaffToMeasures = (
     }
     if (event.type === MidiHelper.EventType.NOTE) {
       if (event.data[1] !== MidiHelper.EventVelocity.OFF) {
-        notes.push(createNote(accumulatorDelta, quarterNoteTimeDivision, midiNotes[event.data[0]]));
+        notes.push(createNote(accumulatorDelta, quarterNoteTimeDivision, event.data[0], midiNotes[event.data[0]]));
       } else {
         const noteEquivalent = notes.findIndex(note => 
           note.note[0] === midiNotes[event.data[0]] && note.isFinish === false
@@ -193,11 +195,12 @@ const parseStaffToMeasures = (
     const diff = noteB.start - noteA.end;
     let duration = getDuration(noteA.quarterNoteTimeDivision, diff, true);
     if (duration.value > 0) {
-      let restNote = createNote(noteB.start - duration.value, quarterNoteTimeDivision, "F3", true);
+      let restNote = createNote(noteB.start - duration.value, quarterNoteTimeDivision, -1, "F3", true);
       restNote.handleFinishNote(noteB.start);
       notes.splice(i, 0, restNote);
     }
   }
+  
 
   // create measures
   let startMeasureTime = 0;
@@ -216,9 +219,13 @@ const parseStaffToMeasures = (
     let currentMeasure = staff[staff.length - 1][0];
     if (currentMeasure.length > 0) {
       let lastNote = currentMeasure[currentMeasure.length - 1];
+      // 2 notes starts at the same time
       if (lastNote.start === notes[index].start) {
+        // case if they are ending at the same time => we merge them
         if (lastNote.end === notes[index].end) {
+          lastNote.midiNote = [...lastNote.midiNote, ...notes[index].midiNote];
           lastNote.note = [...lastNote.note, ...notes[index].note];
+        // case if they are not ending => moving it to second voice
         } else {
           if (staff[staff.length - 1].length === 1) {
             staff[staff.length - 1].push([]);
@@ -226,11 +233,21 @@ const parseStaffToMeasures = (
           let secondVoice = staff[staff.length - 1][1];
           if (lastNote.end > notes[index].end) {
             currentMeasure[currentMeasure.length - 1] = notes[index];
-            secondVoice.push(lastNote.end);
+            secondVoice.push(lastNote);
           } else {
             secondVoice.push(notes[index]);
           }
         }
+      // previous note is longer than it should be (continuing after the current one)
+      } else if (notes[index].start < lastNote.end) {
+        if (staff[staff.length - 1].length === 1) {
+          staff[staff.length - 1].push([]);
+        }
+        let secondVoice = staff[staff.length - 1][1];
+        console.log(staff[staff.length - 1][1]);
+        secondVoice.push(lastNote);
+        currentMeasure[currentMeasure.length - 1] = notes[index];
+      // 2 notes doesn't start at the same time
       } else {
         currentMeasure.push(notes[index]);
       }
@@ -244,28 +261,51 @@ const parseStaffToMeasures = (
 };
 
 const prepareMeasureNotes = (measure = [], options, score) => {
+  const clef = options.clef;
   let notes = measure[0];
 
-  const notesMerged = notes.reduce((acc, note) => {
+  //merging notes with same duration together
+  const notesMerged = notes.reduceRight((acc, note) => {
     const simplified = note.getNoteAndDuration();
-    const lastNote = acc[acc.length - 1];
-    if (lastNote && lastNote.duration === simplified.duration && lastNote.note.length < 4) {
-      lastNote.note.push(...simplified.note);
+    const prevNote = acc[0];
+    if (prevNote && prevNote.duration === simplified.duration && prevNote.note.length < 2) {
+      prevNote.midiNote.unshift(...simplified.midiNote);
+      prevNote.note.unshift(...simplified.note);
     } else {
-      acc.push(simplified);
+      acc.unshift(simplified);
     }
     return acc;
   }, []);
-  console.log(notesMerged);
+  
   return notesMerged.map(noteMerged => {
+
+    /* console.log("noteMerged: ", noteMerged) */
+    
+    const stemPosition = noteMerged.midiNote.reduce((acc, subNote) => {
+      let tempStepPos = acc;
+      subNote.forEach(n => {
+        if (clef === "bass") {
+          if (n > 53) {
+            tempStepPos = false;
+          }
+        } else {
+          if (n < 65) {
+            tempStepPos = true;
+          } 
+        }
+        
+      })
+      return tempStepPos;
+    }, clef === "bass") === true ? "up" : "down";
+
     const stringifedNotation = noteMerged.note.map(subNote => {
       const noteStringified = subNote.length > 1 ? `(${subNote.join(" ")})` : subNote[0];
       return `${noteStringified}/${noteMerged.duration}`;
     }).join(", ");
     
     const finalNotes = ["8", "16"].includes(noteMerged.duration) && noteMerged.note.length > 1
-      ? score.beam(score.notes(stringifedNotation, options))
-      : score.notes(stringifedNotation, options);
+      ? score.beam(score.notes(stringifedNotation, { ...options, stem: stemPosition}))
+      : score.notes(stringifedNotation, { ...options, stem: stemPosition});
     
     return finalNotes;
   }).reduce((accu, scoreNotes) => accu.concat(scoreNotes), []);

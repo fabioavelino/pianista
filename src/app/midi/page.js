@@ -89,7 +89,7 @@ export default function Page() {
     let x = beginX;
     let y = 0;
 
-    function appendSystem(width) {
+    function appendSystem(width, currentMeasure) {
         const paddingHeight = 200;
         const paddingWidth = width;
         x += width;
@@ -97,7 +97,7 @@ export default function Page() {
             x = beginX;
             y += paddingHeight;
         }
-        const system = vf.System({ x, y, spaceBetweenStaves: 10 });
+        const system = vf.System({ x, y, width: width === 0 || currentMeasure % 4 === 0 ? 300 : 250, spaceBetweenStaves: 10 });
         return system;
     }
     
@@ -134,16 +134,19 @@ export default function Page() {
         //system.addConnector('brace');
         system.addConnector('singleRight');
         //system.addConnector('singleLeft');
-        system = appendSystem(nextWidth);
-        system
+        system = appendSystem(nextWidth, i);
+        console.log("preparing this measures :");
+        console.log(trebleStaff[i]);
+        console.log(bassStaff[i]);
+        let trebleStave = system
         .addStave({
             voices: [
-            score.voice(prepareMeasureNotes(trebleStaff[i], { stem: 'down', clef: "treble" }, score)),
+            score.voice(prepareMeasureNotes(trebleStaff[i], { clef: "treble" }, score)),
             //score.voice(score.notes(notes[0] + "/q", ...notes.slice(1))),
             //score.voice(score.notes('C#4/h, C#4', { stem: 'down' })),
             ],
         });
-        system
+        let bassStave = system
         .addStave({
             voices: [
             score.voice(prepareMeasureNotes(bassStaff[i], { clef: "bass"}, score)),
@@ -151,6 +154,15 @@ export default function Page() {
             //score.voice(score.notes('C#4/h, C#4', { stem: 'down' })),
             ],
         });
+        if (i % 4 === 0) {
+          trebleStave.addClef('treble')
+          .addKeySignature(keySignature);
+
+          bassStave.addClef('bass')
+          .addKeySignature(keySignature);
+
+          system.addConnector()
+        }
         vf.draw();
         const drawedStaves = document.querySelectorAll("g.vf-stave");
         const lastStave = drawedStaves[drawedStaves.length - 1]
