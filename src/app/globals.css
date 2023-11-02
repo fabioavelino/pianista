@@ -39,3 +39,7 @@ img#music-sheet {
   width: unset;
   height: auto;
 }
+
+#vf-hidden {
+  display: none;
+}

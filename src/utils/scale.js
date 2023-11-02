@@ -19,6 +19,7 @@ const scales = {
     Gb: ["Gb", "Ab", "Bb", "Cb", "Db", "Eb", "Fb"],
     Db: ["Db", "Eb", "F", "Gb", "Ab", "Bb", "C"],
     Ab: [
+      "Cb",
         "C",
         "D",
         "Eb",
@@ -30,7 +31,6 @@ const scales = {
         "A",
         "Bb",
         "B",
-        "Cb",
       ],
     Eb: ["Eb", "F", "G", "Ab", "Bb", "C", "D"],
     Bb: ["Bb", "C", "D", "Eb", "F", "G", "A"],

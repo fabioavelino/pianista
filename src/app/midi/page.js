@@ -6,7 +6,7 @@ import { Vex } from "vexflow";
 const { Factory, EasyScore, System, Renderer, Stave, StaveNote, Note } = Vex.Flow;
 
 var width_canvas = window.innerWidth * 0.8;
-var height_canvas = window.innerHeight * 4.8; 
+var height_canvas = window.innerHeight * 20; 
 
 export default function Page() {
   const [currentMidi, setCurrentMidi] = useState(null);
@@ -27,8 +27,6 @@ export default function Page() {
     reader.addEventListener("load", (event) => {
         setCurrentMidi(event.target.result);
         const midi = parseMidi(event.target.result);
-        // done!
-        //console.log(notes);
         drawSheet(midi);
     });
     reader.readAsDataURL(file);
@@ -36,7 +34,6 @@ export default function Page() {
 
   const drawSheet = (midi) => {
     const keySignature = getKeySignature(midi);
-    console.log(keySignature);
     const { trebleStaff, bassStaff } = parseEventToMeasures(midi);
     const score = vf.EasyScore();
     //const system = vf.System();
@@ -97,18 +94,14 @@ export default function Page() {
             x = beginX;
             y += paddingHeight;
         }
-        const system = vf.System({ x, y, width: width === 0 || currentMeasure % 4 === 0 ? 300 : 250, spaceBetweenStaves: 10 });
+        const system = vf.System({ x, y, autoWidth: false, width: width === 0 || currentMeasure % 4 === 0 ? 300 : 250, spaceBetweenStaves: 10 });
         return system;
     }
     
     let system = appendSystem(0);
     system
     .addStave({
-        voices: [
-        score.voice(prepareMeasureNotes(trebleStaff[0], { stem: 'down', clef: "treble" }, score)),
-        //score.voice(score.notes(notes[0] + "/q", ...notes.slice(1))),
-        //score.voice(score.notes('C#4/h, C#4', { stem: 'down' })),
-        ]
+        voices: trebleStaff[0].map(measure => score.voice(prepareMeasureNotes(measure, { clef: "treble" }, score)))
     })
     .addClef('treble')
     .addTimeSignature('4/4')
@@ -116,11 +109,7 @@ export default function Page() {
 
     system
     .addStave({
-        voices: [
-        score.voice(prepareMeasureNotes(bassStaff[0], { clef: "bass"}, score)),
-        //score.voice(score.notes(notes[0] + "/q", ...notes.slice(1))),
-        //score.voice(score.notes('C#4/h, C#4', { stem: 'down' })),
-        ]
+        voices: bassStaff[0].map(measure => score.voice(prepareMeasureNotes(measure, { clef: "bass"}, score)))
     })
     .addClef('bass')
     .addTimeSignature('4/4')
@@ -130,29 +119,19 @@ export default function Page() {
 
     vf.draw();
     let nextWidth = document.querySelectorAll("g.vf-stave")[0].getBoundingClientRect().width;
-    for (let i = 1; i < 20; i++) {
+    for (let i = 1; i < trebleStaff.length - 1; i++) {
+        console.log("PREPARING")
         //system.addConnector('brace');
         system.addConnector('singleRight');
         //system.addConnector('singleLeft');
         system = appendSystem(nextWidth, i);
-        console.log("preparing this measures :");
-        console.log(trebleStaff[i]);
-        console.log(bassStaff[i]);
         let trebleStave = system
         .addStave({
-            voices: [
-            score.voice(prepareMeasureNotes(trebleStaff[i], { clef: "treble" }, score)),
-            //score.voice(score.notes(notes[0] + "/q", ...notes.slice(1))),
-            //score.voice(score.notes('C#4/h, C#4', { stem: 'down' })),
-            ],
+          voices: trebleStaff[i].map((measure, index) => score.voice(prepareMeasureNotes(measure, { clef: "treble" }, score, index > 0)))
         });
         let bassStave = system
         .addStave({
-            voices: [
-            score.voice(prepareMeasureNotes(bassStaff[i], { clef: "bass"}, score)),
-            //score.voice(score.notes(notes[0] + "/q", ...notes.slice(1))),
-            //score.voice(score.notes('C#4/h, C#4', { stem: 'down' })),
-            ],
+          voices: bassStaff[0].map((measure, index) => score.voice(prepareMeasureNotes(measure, { clef: "bass"}, score, index > 0)))
         });
         if (i % 4 === 0) {
           trebleStave.addClef('treble')
